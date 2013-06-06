@@ -171,6 +171,23 @@ class Course(Model):
         ordering = ['number']
 
 
+class CourseRevision(Model):
+
+    course          = ForeignKey('Course', related_name='revision',
+                                 verbose_name=_('course'))
+    type            = ForeignKey('CourseType', related_name='revision',
+                                 verbose_name=_('course type'))
+    date            = DateTimeField(_('date modified'), auto_now=True)
+
+    def __unicode__(self):
+        return ' - '.join([self.course.title, self.type.name, self.date])
+
+    class Meta(MetaCore):
+        db_table = app_label + '_' + 'course_revisions'
+        verbose_name = _('course revisions')
+        ordering = ['-date']
+
+
 class Professor(Model):
 
     user            = ForeignKey(User, related_name='professor',
@@ -268,11 +285,11 @@ class Conference(Model):
         return dict
 
     def to_json_dict(self):
-        data = {'id': self.public_id, 
+        data = {'id': self.public_id,
                 'course_code': self.course.code,
-                'course_type': self.course_type.name, 
+                'course_type': self.course_type.name,
                 'professor_id': self.professor.user.username,
-                'period': self.period.name, 
+                'period': self.period.name,
                 'department': self.department.name,
                 'session': self.session,
                 'comment': self.comment,
@@ -474,7 +491,7 @@ class DocumentSimple(MediaBase):
     def save(self, **kwargs):
         super(DocumentSimple, self).save(**kwargs)
         self.set_mime_type()
-        
+
 
     class Meta(MetaCore):
         db_table = app_label + '_' + 'document_simple'

@@ -37,10 +37,26 @@ from teleforma.views.core import *
 
 
 def format_crfpa_courses(courses, course=None, queryset=None, types=None, admin=False):
+    all_types = []
+
     if queryset:
         for c in queryset:
             if c and (c.code != 'X' or admin == True):
-                courses.append({'course': c, 'types': types.all(),
+            revisions = c.revision.all()
+                if revisions:
+                    for type in types.all():
+                        revision = revisions.filter(type=type)
+                        if revision:
+                            date = revisions[0].date_modified
+                        else:
+                            date = None
+                        all_types.append((type, date))
+                else:
+                    all_types = types.all()
+
+                all_types = sorted(all_types, key=lambda k: k[1], reverse=True)
+
+                courses.append({'course': c, 'types': all_types,
                 'date': c.date_modified, 'number': c.number})
     elif course:
         if course.code != 'X' or admin == True:
