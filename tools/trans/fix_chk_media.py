@@ -2,6 +2,7 @@
 
 import os, sys, psutil
 import datetime
+from ebml.utils.ebml_data import *
 
 class FixCheckMedia(object):
 
@@ -12,46 +13,39 @@ class FixCheckMedia(object):
             os.makedirs(self.tmp_dir)
 
     def process(self):
+        webm_fixed_log = 'webm.fixed'
+        webm_tofix_log = 'webm.tofix'
+        mp3_fixed_log = 'mp3.fixed'
+        mp3_tofix_log = 'mp3.tofix'
+
         for root, dirs, files in os.walk(self.dir):
             for filename in files:
-                path = root + os.sep + filename
+                source = root + os.sep + filename
                 name = os.path.splitext(filename)[0]
                 ext = os.path.splitext(filename)[1][1:]
-                dir_files = os.listdir(root)
 
-                fixed_log = 'mp3.fixed'
-                tofix_log = 'mp3.tofix'
+                if ext == 'webm' and os.path.getsize(source):
+                    dir_files = os.listdir(root)
 
-                if ext == 'mp3' and tofix_log in dir_files and not fixed_log in dir_files:
-                    print path
-                    for file in dir_files:
-                        source_ext = os.path.splitext(file)[1][1:]
-                        if source_ext == 'webm':
-                            source = root + os.sep + file
-                            if os.path.getsize(source):
-                                self.fix_mp3(source, path)
-                                os.system('touch ' + root + os.sep + fixed_log)
-                                os.system('rm ' + root + os.sep + tofix_log)
-                            break
-                            #pass
-
-                fixed_log = 'webm.fixed'
-                tofix_log = 'webm.tofix'
-
-                if ext == 'webm' and not fixed_log in dir_files:
-                    print path
-                    if os.path.getsize(path):
-                        self.fix_webm(path)
-                        os.system('touch ' + root + os.sep + fixed_log)
-                        #pass
-
-                #if ext == 'webm' and tofix_log in dir_files:
-                #    print path
-                #    os.system('touch ' + root + os.sep + fixed_log)
-                #    os.system('rm ' + root + os.sep + tofix_log)
-                #    if os.path.getsize(path):
-                #        self.hard_fix_webm(path)
-                        #pass
+                    if not webm_fixed_log in dir_files:
+                        print source    
+                        self.fix_webm(source)
+                        f = open(root + os.sep + webm_fixed_log, 'w')
+                        f.close()
+                        if os.path.exists(root + os.sep + webm_tofix_log):
+                            os.remove(root + os.sep + webm_tofix_log)
+            
+                    if mp3_tofix_log in dir_files and not mp3_fixed_log in dir_files:
+                        for file in dir_files:
+                            dest_ext = os.path.splitext(file)[1][1:]
+                            if dest_ext == 'mp3':
+                                dest = root + os.sep + file
+                                print dest
+                                self.fix_mp3(source, dest)
+                                f = open(root + os.sep + mp3_fixed_log, 'w')
+                                f.close()
+                                os.remove(root + os.sep + mp3_tofix_log)
+                                #break
 
 
     def hard_fix_webm(self, path):
@@ -68,18 +62,21 @@ class FixCheckMedia(object):
 
     def fix_webm(self, path):
         try:
-            tmp_file = self.tmp_dir + 'out.webm '
-            command = 'ffmpeg -loglevel 0 -i '+ path + ' -vcodec copy -acodec copy -f webm -y ' + tmp_file + ' > /dev/null'
+            tmp_file = self.tmp_dir + 'out.webm'
+            command = '/usr/local/bin/ffmpeg -loglevel 0 -i ' + path + ' -vcodec copy -acodec copy -f webm -y ' + tmp_file + ' > /dev/null'
             print command
             os.system(command)
-            command = 'mv '  + tmp_file + path
+            ebml_obj = EBMLData(tmp_file)
+            offset = ebml_obj.get_first_cluster_seconds()
+            command = '/usr/local/bin/ffmpeg -loglevel 0 -ss ' + str(offset) + ' -i ' + tmp_file + ' -vcodec copy -acodec copy -f webm -y ' + path + ' > /dev/null'
+            print command
             os.system(command)
         except:
             pass
 
     def fix_mp3(self, source, path):
         try:
-            command = 'ffmpeg -loglevel 0 -i '+ source + ' -aq 6 -y ' + path + ' > /dev/null'
+            command = '/usr/local/bin/ffmpeg -loglevel 0 -i '+ source + ' -vn -aq 6 -y ' + path + ' > /dev/null'
             print command
             os.system(command)
         except:
